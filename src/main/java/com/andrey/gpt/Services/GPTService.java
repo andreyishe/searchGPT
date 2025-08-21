@@ -16,7 +16,7 @@ public class GPTService {
         try {
             // тело запроса
             String requestBody = "{\n" +
-                    "  \"model\": \"gpt-4o-mini\",\n" +
+                    "  \"model\": \"gpt-4o\",\n" +
                     "  \"messages\": [{\"role\": \"user\", \"content\": \"" + prompt + "\"}]\n" +
                     "}";
 
