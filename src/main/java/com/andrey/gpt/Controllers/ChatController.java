@@ -1,6 +1,7 @@
 package com.andrey.gpt.Controllers;
 
 import com.andrey.gpt.Services.GPTService;
+import com.andrey.gpt.Services.SiteContentService;
 import com.andrey.gpt.dto.ChatResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -10,21 +11,35 @@ import org.springframework.web.bind.annotation.*;
 public class ChatController {
 
     private final GPTService gptService;
+    private final SiteContentService siteContentService;
 
-    public ChatController(GPTService gptService) {
+    public ChatController(GPTService gptService, SiteContentService siteContentService) {
         this.gptService = gptService;
+        this.siteContentService = siteContentService;
     }
 
     @PostMapping
     public ResponseEntity<?> chat(@RequestBody String prompt) {
         try {
-            ChatResponse response = gptService.getChatCompletion(prompt);
+            String siteText = siteContentService.getSiteText();
+
+            String fullPrompt = "Use this text from the website :\n"
+                    + siteText
+                    + "\n\nQuestion: " + prompt;
+
+            ChatResponse response = gptService.getChatCompletion(fullPrompt);
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity
                     .status(429)
                     .body(new ErrorResponse("Too many requests. Try again later."));
         }
+    }
+    @GetMapping("/site-content")
+    public ResponseEntity<?> getSiteContent() {
+        String siteText = siteContentService.getSiteText();
+        return ResponseEntity.ok(siteText);
     }
 
     static class ErrorResponse {
