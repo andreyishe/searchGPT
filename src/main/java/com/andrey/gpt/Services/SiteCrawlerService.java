@@ -3,11 +3,14 @@ package com.andrey.gpt.Services;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
+import org.apache.tika.parser.ParseContext;
 import org.apache.tika.sax.BodyContentHandler;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.safari.SafariDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,40 +22,14 @@ import java.net.ContentHandler;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.time.Duration;
 import java.util.*;
 
 @Service
 public class SiteCrawlerService {
 
     private static final Logger logger = LoggerFactory.getLogger(SiteCrawlerService.class);
-
     private final Set<String> visited = new LinkedHashSet<>();
-
-    public SiteCrawlerService() {
-        WebDriverManager.safaridriver().setup();
-        WebDriverManager.chromedriver().setup();
-        WebDriverManager.operadriver().setup();
-    }
-
-    public Map<String, String> crawlSite(String startUrl, int maxDepth) {
-        Map<String, String> pages = new LinkedHashMap<>();
-        try {
-            URI uri = new URI(startUrl);
-            String domain = uri.getScheme() + "://" + uri.getHost();
-            WebDriver driver = new SafariDriver();
-            logger.info("Starting crawl from: {} with maxDepth={}", startUrl, maxDepth);
-            try {
-                crawl(startUrl, domain, pages, maxDepth, 0, driver);
-            } finally {
-                driver.quit();
-            }
-            logger.info("Crawling finished. Total pages visited: {}", visited.size());
-
-        } catch (URISyntaxException e) {
-            logger.error("Invalid start URL: {}", startUrl, e);
-        }
-        return pages;
-    }
 
     private String extractTitle(Document doc) {
         doc.select("script, nav, style, header, footer, noscript").remove();
@@ -71,60 +48,89 @@ public class SiteCrawlerService {
 
         return textBuilder.toString();
     }
+    public Map<String, String> crawlSite(String startUrl, int maxDepth) {
+        visited.clear();
+        Map<String, String> pages = new LinkedHashMap<>();
+        WebDriver driver = new ChromeDriver();
+        if (driver != null) {
+            try {
+                driver.close(); // мягко закрыть вкладку
+            } catch (Exception ignore) {}
+            try {
+                driver.quit();  // убить процесс
+            } catch (Exception ignore) {}
+        }
+        try {
+            String domain = originOf(startUrl);
 
+
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--headless=new", "--no-sandbox", "--disable-dev-shm-usage",
+                    "--disable-gpu", "--window-size=1920,1080");
+
+
+            driver = new ChromeDriver(options);
+            driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(30));
+            logger.info("Starting crawl from {} (maxDepth={})", startUrl, maxDepth);
+            crawl(startUrl, domain, pages, maxDepth, 0, driver);
+            logger.info("Crawling finished. Pages visited: {}", visited.size());
+        } catch (Exception e) {
+            logger.error("Crawler failed: {}", e.getMessage(), e);
+        } finally {
+            if (driver != null) {
+                try { driver.quit(); } catch (Exception ignore) {}
+            }
+        }
+        return pages;
+    }
     private void crawl(String url, String domain, Map<String, String> pages, int maxDepth, int depth, WebDriver driver) {
-        if (visited.size() >= maxDepth || visited.contains(url)) return;
-
+        String normalized = normalizeUrl(url);
+        if (normalized.isBlank()) return;
+        if (depth > maxDepth) return;
+        if (!sameOrigin(normalized, domain)) return;
+        if (!visited.add(normalized)) return;
+        if (isPdf(normalized)) {
+            logger.info("PDF detected: {}", normalized);
+            String pdfText = extractTextFromPdf(normalized);
+            if (!pdfText.isBlank()) pages.put(normalized, pdfText);
+            return;
+        }
             logger.debug("Max depth {} reached at {}", maxDepth, url);
         try {
-            url = normalizeUrl(url);
-            visited.add(url);
-            if (url.endsWith(".pdf")) {
-                String pdfText = extractTextFromPdf(url);
-                if (!pdfText.isBlank()) pages.put(url, pdfText);
-            } else {
-                driver.get(url);
-                Thread.sleep(2000);
-                String pageSource = driver.getPageSource();
+            logger.info("Crawling [{}] depth={}", normalized, depth);
 
-                Document doc = Jsoup.parse(pageSource);
-                String text = extractText(doc);
-                if (!text.isBlank()) pages.put(url, text);
+            if (isPdf(normalized)) {
+                String pdfText = extractTextFromPdf(normalized);
+                if (!pdfText.isBlank()) pages.put(normalized, pdfText);
+                return; // у PDF нет ссылок
             }
 
-            if (visited.contains(url)) {
-                logger.debug("Already visited: {}", url);
-                return;
+            // Загружаем страницу динамически
+            driver.get(normalized);
+            String pageSource = driver.getPageSource();
+
+            // Парсим РОВНО тот HTML, что отдал браузер
+            Document doc = Jsoup.parse(pageSource, normalized);
+
+            // Текст
+            String text = extractText(doc);
+            if (!text.isBlank()) pages.put(normalized, text);
+
+            // Переходы по ссылкам из уже распарсенного документа
+            for (Element a : doc.select("a[href]")) {
+                String href = a.attr("abs:href");
+                if (href == null || href.isBlank()) continue;
+
+                String child = normalizeUrl(href);
+                if (child.isBlank()) continue;
+                if (!sameOrigin(child, domain)) continue;
+                if (isSkippable(child)) continue; // картинки/архивы/офис — пропустим (PDF мы уже обработали выше)
+
+                crawl(child, domain, pages, maxDepth, depth + 1, driver);
             }
 
-            if (isSkippable(url)) {
-                logger.debug("Skipping binary file: {}", url);
-                return;
-            }
-
-            logger.info("Crawling URL: {} (depth={})", url, depth);
-
-            Document doc = Jsoup.connect(url)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/115.0 Safari/537.36")
-                    .timeout(15000)
-                    .get();
-
-            visited.add(url);
-
-            String text = extractTitle(doc);
-            if (!text.isBlank()) {
-                pages.put(url, text);
-                logger.debug("Extracted {} characters of text from {}", text.length(), url);
-            } else {
-                logger.debug("No useful text extracted from {}", url);
-            }
-
-            doc.select("a[href]").stream()
-                    .map(link -> link.absUrl("href"))
-                    .filter(link -> link.startsWith(domain))
-                    .forEach(link -> crawl(link, domain, pages, maxDepth, depth + 1, driver));
         } catch (Exception e) {
-            logger.error("Error while crawling {} : {}", url, e.getMessage());
+            logger.error("Error while crawling {} : {}", normalized, e.getMessage());
         }
     }
 
@@ -142,11 +148,12 @@ public class SiteCrawlerService {
         }
     }
     private String extractTextFromPdf(String url) {
-        try(InputStream in = new URL(url).openStream()) {
+        try (InputStream in = new URL(url).openStream()) {
             BodyContentHandler handler = new BodyContentHandler(-1);
             Metadata metadata = new Metadata();
             AutoDetectParser parser = new AutoDetectParser();
-            parser.parse(in, handler, metadata, null);
+            ParseContext context = new ParseContext();  // <- вот оно
+            parser.parse(in, handler, metadata, context);  // не null
             return handler.toString();
         } catch (Exception e) {
             logger.error("Error while extracting text from pdf: {}", url, e);
@@ -165,5 +172,22 @@ public class SiteCrawlerService {
     }
     private boolean isSkippable(String url) {
         return url.matches("(?i).*(\\.pdf|\\.png|\\.jpg|\\.jpeg|\\.gif|\\.svg|\\.docx?|\\.xlsx?|\\.pptx?)$");
+    }
+
+    private String originOf(String anyUrl) {
+        try {
+            URI u = new URI(anyUrl);
+            return u.getScheme() + "://" + u.getHost();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private boolean isPdf(String url) {
+        return url.toLowerCase().contains(".pdf");
+    }
+
+    private boolean sameOrigin(String url, String origin) {
+        return url.startsWith(origin);
     }
 }

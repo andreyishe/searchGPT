@@ -21,14 +21,12 @@ public class RetrievalService {
 
 
         Set<String> qTokens = tokens(query);
-
-
         List<ContentChunk> allChunks = site.getChunks();
 
 
         return allChunks.stream()
                 .map(c -> Map.entry(score(c, qTokens), c))
-                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey())) // по убыванию
+                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey()))
                 .limit(k)
                 .map(Map.Entry::getValue)
                 .collect(Collectors.toList());

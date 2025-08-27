@@ -28,6 +28,7 @@ public class SiteContentService {
     }
 
 
+
     public String getSiteText() {
         Map<String, String> pages = crawler.crawlSite("https://www.ancud.de", 10);
         StringBuilder builder = new StringBuilder();
