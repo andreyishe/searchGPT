@@ -22,7 +22,7 @@ public class GPTService {
 
     public ChatResponse getChatCompletion(String prompt) {
         try {
-            // создаём тело запроса как Map
+
             Map<String, Object> body = new HashMap<>();
             body.put("model", "gpt-5");
             List<Map<String, String>> messages = new ArrayList<>();

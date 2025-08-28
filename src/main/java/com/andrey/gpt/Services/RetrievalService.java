@@ -1,7 +1,6 @@
 package com.andrey.gpt.Services;
 
 import com.andrey.gpt.Model.ContentChunk;
-import com.andrey.gpt.Model.PageContent;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -19,14 +18,12 @@ public class RetrievalService {
     public List<ContentChunk> retrieve(String query, Integer topK) {
         int k = (topK == null || topK <= 0) ? 8 : topK;
 
-
         Set<String> qTokens = tokens(query);
         List<ContentChunk> allChunks = site.getChunks();
 
-
         return allChunks.stream()
                 .map(c -> Map.entry(score(c, qTokens), c))
-                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey()))
+                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey())) // по убыванию релевантности
                 .limit(k)
                 .map(Map.Entry::getValue)
                 .collect(Collectors.toList());

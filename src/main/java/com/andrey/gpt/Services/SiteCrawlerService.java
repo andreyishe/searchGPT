@@ -54,10 +54,10 @@ public class SiteCrawlerService {
         WebDriver driver = new ChromeDriver();
         if (driver != null) {
             try {
-                driver.close(); // мягко закрыть вкладку
+                driver.close();
             } catch (Exception ignore) {}
             try {
-                driver.quit();  // убить процесс
+                driver.quit();
             } catch (Exception ignore) {}
         }
         try {
@@ -102,21 +102,21 @@ public class SiteCrawlerService {
             if (isPdf(normalized)) {
                 String pdfText = extractTextFromPdf(normalized);
                 if (!pdfText.isBlank()) pages.put(normalized, pdfText);
-                return; // у PDF нет ссылок
+                return;
             }
 
-            // Загружаем страницу динамически
+
             driver.get(normalized);
             String pageSource = driver.getPageSource();
 
-            // Парсим РОВНО тот HTML, что отдал браузер
+
             Document doc = Jsoup.parse(pageSource, normalized);
 
-            // Текст
+
             String text = extractText(doc);
             if (!text.isBlank()) pages.put(normalized, text);
 
-            // Переходы по ссылкам из уже распарсенного документа
+
             for (Element a : doc.select("a[href]")) {
                 String href = a.attr("abs:href");
                 if (href == null || href.isBlank()) continue;
@@ -124,7 +124,7 @@ public class SiteCrawlerService {
                 String child = normalizeUrl(href);
                 if (child.isBlank()) continue;
                 if (!sameOrigin(child, domain)) continue;
-                if (isSkippable(child)) continue; // картинки/архивы/офис — пропустим (PDF мы уже обработали выше)
+                if (isSkippable(child)) continue;
 
                 crawl(child, domain, pages, maxDepth, depth + 1, driver);
             }
