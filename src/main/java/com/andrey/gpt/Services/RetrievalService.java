@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 public class RetrievalService {
 
     private final SiteContentService site;
-
+    private final int MAX_CHARS_FOR_OPENAI = 1500;
     public RetrievalService(SiteContentService site) {
         this.site = site;
     }
@@ -26,6 +26,7 @@ public class RetrievalService {
                 .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey())) // по убыванию релевантности
                 .limit(k)
                 .map(Map.Entry::getValue)
+                .map(c->truncateChunk(c))
                 .collect(Collectors.toList());
     }
 
@@ -35,6 +36,12 @@ public class RetrievalService {
                         .split("\\s+"))
                 .filter(t -> t.length() > 2)
                 .collect(Collectors.toSet());
+    }
+    private ContentChunk truncateChunk(ContentChunk chunk) {
+        if (chunk.getText().length() > MAX_CHARS_FOR_OPENAI) {
+            return new ContentChunk(chunk.getChunkId(), chunk.getText().substring(0, MAX_CHARS_FOR_OPENAI));
+        }
+        return chunk;
     }
 
     private static int score(ContentChunk c, Set<String> qTokens) {

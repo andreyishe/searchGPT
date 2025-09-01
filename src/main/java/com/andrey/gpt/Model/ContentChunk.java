@@ -5,7 +5,7 @@ public class ContentChunk {
     private String chunkId;
     private String text;
 
-    public ContentChunk() {
+    public ContentChunk(String chunkId, String substring) {
     }
 
     public ContentChunk(String url, String chunkId, String text) {
