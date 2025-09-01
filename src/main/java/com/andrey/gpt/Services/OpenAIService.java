@@ -1,6 +1,7 @@
 package com.andrey.gpt.Services;
 
 import com.andrey.gpt.Model.ContentChunk;
+import com.andrey.gpt.Utils.TokenUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,10 +12,8 @@ public class OpenAIService {
 
     private final RetrievalService retrieval;
 
-    // Настройки
-    private static final int MAX_WORDS_PER_CHUNK = 500;
-    private static final int MAX_TOTAL_TOKENS = 2000;
-    private static final double TOKEN_PER_WORD = 1.3;
+    private static final int MAX_CHARS_PER_CHUNK = 500;
+    private static final int TopK = 5;
 
     public OpenAIService(RetrievalService retrieval) {
         this.retrieval = retrieval;
@@ -31,34 +30,24 @@ public class OpenAIService {
             if (text == null || text.isBlank()) continue;
 
 
-            String safeChunk = trimChunk(text, MAX_WORDS_PER_CHUNK);
+            String safeChunk = TokenUtils.truncateByTokens(text, MAX_CHARS_PER_CHUNK);
 
-
-            int chunkTokens = (int) (safeChunk.split("\\s+").length * TOKEN_PER_WORD);
-
-            if (totalTokens + chunkTokens > MAX_TOTAL_TOKENS) {
-
-                break;
-            }
 
             String response = callOpenAI(safeChunk, query);
             combinedResponse.append(response).append("\n");
-
-            totalTokens += chunkTokens;
         }
 
         return combinedResponse.toString();
     }
 
 
-    private String trimChunk(String text, int maxWords) {
-        String[] words = text.split("\\s+");
-        int end = Math.min(words.length, maxWords);
-        return String.join(" ", Arrays.copyOfRange(words, 0, end));
+    private String truncateChunk(String text, int maxCharsPerChunk) {
+        if (text.length() <= maxCharsPerChunk) return text.substring(0, maxCharsPerChunk);
+        return text.substring(0, maxCharsPerChunk) + "...";
     }
 
 
     private String callOpenAI(String chunkText, String query) {
-        return "GPT response for chunk: " + chunkText.substring(0, Math.min(100, chunkText.length())) + "...";
+        return "GPT response for chunk: " + query+" with text: " + chunkText.substring(0, Math.min(50, chunkText.length())) + "\n";
     }
 }

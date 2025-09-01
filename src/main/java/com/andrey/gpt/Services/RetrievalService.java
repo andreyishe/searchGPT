@@ -23,7 +23,7 @@ public class RetrievalService {
 
         return allChunks.stream()
                 .map(c -> Map.entry(score(c, qTokens), c))
-                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey())) // по убыванию релевантности
+                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey()))
                 .limit(k)
                 .map(Map.Entry::getValue)
                 .map(c->truncateChunk(c))

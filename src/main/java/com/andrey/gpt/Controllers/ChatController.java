@@ -1,5 +1,6 @@
 package com.andrey.gpt.Controllers;
 
+import com.andrey.gpt.Model.ContentChunk;
 import com.andrey.gpt.Services.GPTService;
 import com.andrey.gpt.Services.RetrievalService;
 import com.andrey.gpt.Services.SiteContentService;
@@ -7,6 +8,9 @@ import com.andrey.gpt.dto.ChatResponse;
 import com.openai.services.blocking.ChatService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -24,10 +28,15 @@ public class ChatController {
     @PostMapping
     public ResponseEntity<?> chat(@RequestBody String prompt) {
         try {
-            String siteText = siteContentService.getSiteText();
+            List<ContentChunk> relevantChunks = retrievalService.retrieve(prompt, 5);
+            String context = relevantChunks.stream()
+                    .map(ContentChunk::getText)
+                    .collect(Collectors.joining("\n---\n"));
+
+
 
             String fullPrompt = "Use this text from the website :\n"
-                    + siteText
+                    + context
                     + "\n\nQuestion: " + prompt;
 
             ChatResponse response = gptService.getChatCompletion(fullPrompt);
