@@ -13,31 +13,43 @@ import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class SiteContentService {
-
+    private String cachedContent;
+    private LocalDateTime lastModified;
+    private final Duration duration = Duration.ofHours(1);
     private final SiteCrawlerService crawler;
 
     public SiteContentService(SiteCrawlerService crawler) {
         this.crawler = crawler;
     }
 
-
-
     public String getSiteText() {
-        Map<String, String> pages = crawler.crawlSite("https://www.ancud.de", 10);
-        StringBuilder builder = new StringBuilder();
+        if (cachedContent == null || isExpired()) {
+            Map<String, String> pages = crawler.crawlSite("https://www.ancud.de", 10);
 
-        for (Map.Entry<String, String> entry : pages.entrySet()) {
-            builder.append("URL: ").append(entry.getKey()).append("\n");
-            builder.append(entry.getValue()).append("\n\n");
+            StringBuilder builder = new StringBuilder();
+            for (Map.Entry<String, String> entry : pages.entrySet()) {
+                builder.append("URL: ").append(entry.getKey()).append("\n");
+                builder.append(entry.getValue()).append("\n\n");
+            }
+
+            cachedContent = builder.toString();
+            lastModified = LocalDateTime.now();
         }
 
-        return builder.toString().trim();
+        return cachedContent;
+    }
+
+    private boolean isExpired() {
+        return lastModified == null ||
+                Duration.between(lastModified, LocalDateTime.now()).compareTo(duration) > 0;
     }
 
     public List<ContentChunk> getChunks() {
