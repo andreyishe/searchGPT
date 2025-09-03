@@ -9,9 +9,7 @@ import java.util.Arrays;
 
 @Service
 public class OpenAIService {
-
     private final RetrievalService retrieval;
-
     private static final int MAX_CHARS_PER_CHUNK = 500;
     private static final int TopK = 5;
 

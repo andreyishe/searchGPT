@@ -1,58 +1,62 @@
 package com.andrey.gpt.Services;
 
+import com.andrey.gpt.Model.ContentChunk;
 import com.andrey.gpt.dto.ChatResponse;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.*;
 
-import java.util.*;
+import java.util.List;
 
 @Service
 public class GPTService {
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final String apiUrl = "https://api.openai.com/v1/chat/completions";
+    private final ChatClient chatClient;
+    private final Logger log = LoggerFactory.getLogger(GPTService.class);
 
-    @Value("${spring.ai.openai.api-key}")
-    private String apiKey;
+    public GPTService(ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-
-    public ChatResponse getChatCompletion(String prompt) {
+    public ChatResponse getChatCompletion(String fullPrompt) {
+        ChatResponse chatResponse = new ChatResponse();
         try {
+            // Отправляем полный контекст + вопрос
+            String content = chatClient.prompt()
+                    .user("""
+                        You are an assistant who always answers with sources or links.
+                        Use the context to answer the question.
+                        Context and question: %s
+                        """.formatted(fullPrompt))
+                    .call()
+                    .content();
 
-            Map<String, Object> body = new HashMap<>();
-            body.put("model", "gpt-5");
-            List<Map<String, String>> messages = new ArrayList<>();
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", prompt);
-            messages.add(userMessage);
-            body.put("messages", messages);
-
-            String jsonBody = objectMapper.writeValueAsString(body); // безопасный JSON
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setBearerAuth(apiKey);
-
-            HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
-
-            ResponseEntity<ChatResponse> response = restTemplate.exchange(
-                    apiUrl,
-                    HttpMethod.POST,
-                    entity,
-                    ChatResponse.class
-            );
-
-            return response.getBody();
+            ChatResponse.Choice choice = new ChatResponse.Choice();
+            ChatResponse.Message message = new ChatResponse.Message();
+            message.setContent(content);
+            choice.setMessage(message);
+            chatResponse.setChoices(List.of(choice));
+            return chatResponse;
 
         } catch (Exception e) {
-            ChatResponse errorResponse = new ChatResponse();
-            errorResponse.setError("Error: " + e.getMessage());
-            return errorResponse;
+            log.error("Error calling OpenAI API", e);
+            chatResponse.setError("Error calling OpenAI API: " + e.getMessage());
+            return chatResponse;
         }
+    }
+
+    // Удобный метод для работы с чанками из RetrievalService
+    public ChatResponse getChatCompletionFromChunks(List<ContentChunk> chunks, String question) {
+        String context = chunks.stream()
+                .map(ContentChunk::getText)
+                .reduce((a, b) -> a + "\n---\n" + b)
+                .orElse("");
+
+        String fullPrompt = "Use this text from the website:\n"
+                + context
+                + "\n\nQuestion: " + question;
+
+        return getChatCompletion(fullPrompt);
     }
 }

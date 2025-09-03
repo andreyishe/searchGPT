@@ -1,7 +1,9 @@
 package com.andrey.gpt.dto;
 
-import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatResponse {
     private List<Choice> choices;
     private String error;
@@ -19,7 +21,7 @@ public class ChatResponse {
     public void setError(String error) {
         this.error = error;
     }
-
+@JsonIgnoreProperties(ignoreUnknown = true)
     public static class Choice {
         private Message message;
 
@@ -30,7 +32,7 @@ public class ChatResponse {
             this.message = message;
         }
     }
-
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Message {
         private String role;
         private String content;
