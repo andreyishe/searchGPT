@@ -1,5 +1,6 @@
 package com.andrey.gpt.Components;
 
+import com.andrey.gpt.Services.GPTService;
 import com.openai.services.blocking.ChatService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
@@ -9,10 +10,10 @@ import java.util.Scanner;
 
 @Component
 public class ChatCli implements CommandLineRunner {
-    private final ChatClient chatClient;
+    private final GPTService gptService;
 
-    public ChatCli(ChatClient chatClient) {
-        this.chatClient = chatClient;
+    public ChatCli(GPTService gptService) {
+        this.gptService = gptService;
     }
     @Override
     public void run(String... args) throws Exception {
@@ -27,16 +28,17 @@ public class ChatCli implements CommandLineRunner {
                 break;
             }
 
-            String response = chatClient.prompt()
-                    .user("""
+         var response = gptService.getChatCompletion("""
                         You are an assistant who always answers with sources or links.
                         In your answer, be sure to add links to materials, articles or official resources.
                         Question: %s
-                        """.formatted(input))
-                    .call()
-                    .content();
+                        """.formatted(input));
 
-            System.out.println("Response: " + response);
+            System.out.println("Response: " +
+                    (response.getChoices() != null && !response.getChoices().isEmpty()
+                            ? response.getChoices().get(0).getMessage().getContent()
+                            : response.getError()));
+
         }
     }
 }
