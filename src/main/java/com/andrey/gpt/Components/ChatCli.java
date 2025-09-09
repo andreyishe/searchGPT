@@ -4,11 +4,13 @@ import com.andrey.gpt.Services.GPTService;
 import com.openai.services.blocking.ChatService;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.util.Scanner;
 
 @Component
+@Profile("cli")
 public class ChatCli implements CommandLineRunner {
     private final GPTService gptService;
 
@@ -34,16 +36,12 @@ public class ChatCli implements CommandLineRunner {
                         Question: %s
                         """.formatted(input));
 
-            System.out.println("Response: " +
-                    (response.getChoices() != null && !response.getChoices().isEmpty()
-                            ? response.getChoices().get(0).getMessage().getContent()
-                            : response.getError()));
+
             var choices = response.getChoices();
-            if (choices != null && !choices.isEmpty()) {
-                System.out.println("Response: " + choices.get(0).getMessage().getContent());
-            } else {
-                System.out.println("Response: " + response.getError());
-            }
+            String message = (choices != null && !choices.isEmpty())
+                    ?choices.get(0).getMessage().getContent()
+                    :response.getError();
+            System.out.println("Response: " + message);
 
         }
     }

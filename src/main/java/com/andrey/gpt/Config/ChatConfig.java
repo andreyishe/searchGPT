@@ -74,10 +74,17 @@ public class ChatConfig {
         return ExchangeFilterFunction.ofResponseProcessor(resp -> {
             if (resp.statusCode().isError()) {
                 return resp.bodyToMono(String.class)
-                        .defaultIfEmpty("<empty body>")
-                        .doOnNext(body -> System.err.println(
-                                "[OpenAI error] status=" + resp.statusCode() + " body=" + body))
-                        .thenReturn(resp);
+                        .defaultIfEmpty("")
+                        .map(body -> {
+                            String logBody = body.isEmpty() ? "<empty body>" : body;
+                            System.err.println("[OpenAI error] status=" + resp.statusCode() + " body=" + logBody);
+                            return org.springframework.web.reactive.function.client.ClientResponse
+                                    .create(resp.statusCode())
+                                    .headers(h -> h.addAll(resp.headers().asHttpHeaders()))
+                                    .cookies(c -> c.addAll(resp.cookies()))
+                                    .body(body)
+                                    .build();
+                        });
             }
             return reactor.core.publisher.Mono.just(resp);
         });
