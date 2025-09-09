@@ -8,6 +8,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
 import java.util.List;
@@ -59,7 +60,10 @@ public class GPTService {
             log.error("OpenAI HTTP error {}: {}", http.getRawStatusCode(), body);
             chatResponse.setError("OpenAI error " + http.getRawStatusCode() + ": " + body);
             return chatResponse;
-
+        } catch (RestClientException e){
+            log.error("OpenAI error {}", e.getMessage());
+            chatResponse.setError("OpenAI error " + e.getMessage());
+            return chatResponse;
         } catch (Exception e) {
             log.error("Error calling OpenAI API", e);
             chatResponse.setError("Error calling OpenAI API: " + e.getMessage());

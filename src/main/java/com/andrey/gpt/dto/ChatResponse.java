@@ -2,17 +2,19 @@ package com.andrey.gpt.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ChatResponse {
-    private List<Choice> choices;
+    private List<Choice> choices = new ArrayList<>();
     private String error;
 
     public List<Choice> getChoices() {
         return choices;
     }
     public void setChoices(List<Choice> choices) {
-        this.choices = choices;
+        this.choices = choices != null ? choices : Collections.emptyList();
     }
 
     public String getError() {

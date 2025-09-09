@@ -28,7 +28,7 @@ public class ChatCli implements CommandLineRunner {
                 break;
             }
 
-         var response = gptService.getChatCompletion("""
+            var response = gptService.getChatCompletion("""
                         You are an assistant who always answers with sources or links.
                         In your answer, be sure to add links to materials, articles or official resources.
                         Question: %s
@@ -38,6 +38,12 @@ public class ChatCli implements CommandLineRunner {
                     (response.getChoices() != null && !response.getChoices().isEmpty()
                             ? response.getChoices().get(0).getMessage().getContent()
                             : response.getError()));
+            var choices = response.getChoices();
+            if (choices != null && !choices.isEmpty()) {
+                System.out.println("Response: " + choices.get(0).getMessage().getContent());
+            } else {
+                System.out.println("Response: " + response.getError());
+            }
 
         }
     }
