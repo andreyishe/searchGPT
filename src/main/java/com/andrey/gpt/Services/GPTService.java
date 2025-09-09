@@ -22,22 +22,22 @@ public class GPTService {
     @Value("${spring.ai.openai.chat.model:gpt-4o-mini}")
     private String model;
 
-    public GPTService(ChatClient chatClient) {
-        this.chatClient = chatClient;
-    }
+    public GPTService(ChatClient.Builder builder,
+        @Value("${spring.ai.openai.chat.options.model:gpt-4o-mini}") String model){
+           this.chatClient = builder.defaultOptions(
+                   OpenAiChatOptions.builder()
+                           .model(model)
+                           .temperature(1.0)
+                           .maxTokens(800)
+                           .build()).build();
+        }
+
 
     public ChatResponse getChatCompletion(String fullPrompt) {
         ChatResponse chatResponse = new ChatResponse();
         try {
 
-            OpenAiChatOptions opts = OpenAiChatOptions.builder()
-                    .model(model)
-                    .temperature(1.0)
-                    .maxTokens(800) // adjust to your needs
-                    .build();
-
             String content = chatClient.prompt()
-                    .options(opts)
                     .user(fullPrompt)
                     .call()
                     .content();
