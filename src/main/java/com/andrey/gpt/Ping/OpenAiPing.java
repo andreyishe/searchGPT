@@ -12,8 +12,8 @@ class OpenAiPing implements org.springframework.boot.ApplicationRunner{
     private final WebClient webClient;
     private final String apiKey;
 
-    OpenAiPing(WebClient.Builder builder, @Value("{spring.ai.openai.api-key}") String apiKey) {
-        this.webClient = builder.baseUrl("https://api.openai.api").build();
+    OpenAiPing(WebClient.Builder builder, @Value("${spring.ai.openai.api-key}") String apiKey) {
+        this.webClient = builder.baseUrl("https://api.openai.com").build();
         this.apiKey = apiKey;
     }
     @Override
