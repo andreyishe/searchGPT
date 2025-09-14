@@ -31,11 +31,15 @@ public class GPTService {
           "additionalProperties": false
         }
         """;
+        ResponseFormat responseFormat = ResponseFormat.builder()
+                .type(ResponseFormat.Type.JSON_SCHEMA)
+                .jsonSchema(jsonSchema)
+                .build();
 
         this.chatClient = builder
                 .defaultOptions(OpenAiChatOptions.builder()
                         .model(model)
-                        .responseFormat(new ResponseFormat(ResponseFormat.Type.JSON_SCHEMA, jsonSchema))
+                        .responseFormat(responseFormat)
                         .temperature(1.0)
                         .maxCompletionTokens(800)
                         .build())
@@ -50,7 +54,7 @@ public class GPTService {
             String content = chatClient.prompt()
                     .user(fullPrompt)
                     .call()
-                    .content();
+                    .entity(String.class);
 
             log.info("<<< OpenAI response: {}", content);
 
