@@ -29,7 +29,7 @@ public class SiteCrawlerService {
     private static final int PAGE_LOAD_TIMEOUT_SEC = 35;
     private static final int DOM_READY_TIMEOUT_SEC = 10;
 
-    // поднимайте при необходимости
+
     private static final int DEFAULT_MAX_DEPTH = 3;
     private static final int DEFAULT_MAX_PAGES = 800;
 
@@ -133,7 +133,7 @@ public class SiteCrawlerService {
         return pages;
     }
 
-    // ===== helpers =====
+
 
     private void waitDomReady(WebDriver driver) {
         long start = System.currentTimeMillis();
@@ -148,12 +148,12 @@ public class SiteCrawlerService {
         }
     }
 
-    /** Храним полный путь + query, удаляем только фрагмент. */
+
     private String normalizeUrl(String raw) {
         if (raw == null || raw.isBlank()) return "";
         try {
             URI u = new URI(raw);
-            // убираем фрагмент
+
             u = new URI(u.getScheme(), u.getUserInfo(), u.getHost(), u.getPort(), u.getPath(), u.getQuery(), null);
             String scheme = Optional.ofNullable(u.getScheme()).orElse("https").toLowerCase(Locale.ROOT);
             String host = Optional.ofNullable(u.getHost()).orElse("").toLowerCase(Locale.ROOT);
@@ -167,7 +167,7 @@ public class SiteCrawlerService {
         }
     }
 
-    /** Нормализованный origin: схема + host без ведущего www. */
+
     private String normalizedOrigin(String anyUrl) {
         try {
             URI u = new URI(anyUrl);
@@ -180,7 +180,7 @@ public class SiteCrawlerService {
         }
     }
 
-    /** Разрешаем www.{host} и без www. */
+
     private boolean sameOrigin(String url, String origin) {
         try {
             URI u = new URI(url);

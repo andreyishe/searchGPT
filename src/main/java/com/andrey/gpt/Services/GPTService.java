@@ -44,7 +44,7 @@ public class GPTService {
                 .build();
     }
 
-    // Простой путь без RAG (редко нужен)
+
     public String getChatCompletion(String question) {
         return getChatCompletionFromChunks(List.of(), question);
     }
@@ -61,7 +61,7 @@ Rules:
 No prose. No preamble.
 """;
 
-        // Сбор контекста в строгий JSON-массив
+
         List<Map<String, Object>> items = new ArrayList<>();
         for (int i = 0; i < chunks.size(); i++) {
             ContentChunk c = chunks.get(i);
@@ -69,7 +69,7 @@ No prose. No preamble.
             String url = safe(c.getUrl());
             String txt = safe(c.getText());
             if (txt.isEmpty()) continue;
-            // защитный лимит на один чанк
+
             if (txt.length() > 6000) txt = txt.substring(0, 6000) + "\n...[truncated]...";
             items.add(Map.of(
                     "id", "chunk#" + i,
@@ -112,7 +112,7 @@ No prose. No preamble.
         return parse(raw);
     }
 
-    // ---- helpers ----
+
 
     private String parse(String raw) {
         try {
@@ -127,7 +127,7 @@ No prose. No preamble.
                 return "{\"answer\":\"I don't know\",\"sources\":[]}";
             }
 
-            // content должен быть JSON-строкой (response_format=json_object)
+
             try {
                 JsonNode obj = M.readTree(content);
                 String answer = obj.path("answer").asText("");
@@ -144,7 +144,7 @@ No prose. No preamble.
                 out.put("sources", new ArrayList<>(distinct));
                 return M.writeValueAsString(out);
             } catch (Exception inner) {
-                // на случай, если модель вдруг вернула не JSON (не должна)
+
                 return M.writeValueAsString(Map.of("answer", content, "sources", List.of()));
             }
         } catch (Exception e) {

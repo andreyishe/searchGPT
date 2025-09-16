@@ -40,10 +40,10 @@ public class ChatController {
         }
 
         try {
-            // Реально поднимаем topK, чтобы охватить больше фактов
+
             List<ContentChunk> relevant = retrievalService.retrieve(prompt, 30);
 
-            // Falls back: если ретрив ничего не дал, возьмём 10 самых длинных страниц сайта
+
             if (relevant.isEmpty()) {
                 List<ContentChunk> all = siteContentService.getChunks();
                 relevant = all.stream()

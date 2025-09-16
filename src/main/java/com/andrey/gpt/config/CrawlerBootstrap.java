@@ -31,8 +31,7 @@ public class CrawlerBootstrap {
                 return;
             }
             try {
-                // Selenium 4.6+ сам подберет драйвер через Selenium Manager.
-                // Никаких WebDriverManager.chromedriver().setup() не вызываем.
+
 
                 log.info("Starting crawl: url={} depth={} pages={}", startUrl, maxDepth, maxPages);
                 Map<String, String> pages = crawler.crawlSite(startUrl, maxDepth, maxPages);

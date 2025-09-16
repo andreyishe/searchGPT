@@ -39,14 +39,14 @@ public class ChatCli implements CommandLineRunner {
             if (input.isEmpty()) continue;
 
             try {
-                // 1) достаём релевантные чанки из собранного контента
+
                 List<ContentChunk> chunks = retrievalService.retrieve(input, 8);
                 System.out.printf("[debug] retrieved %d context chunk(s)%n", chunks.size());
 
-                // 2) спрашиваем модель С УЧЁТОМ контекста
+
                 String json = gptService.getChatCompletionFromChunks(chunks, input);
 
-                // 3) печатаем аккуратный ответ
+
                 JsonNode node = mapper.readTree(json);
                 System.out.println("\nAnswer:\n" + node.path("answer").asText());
                 System.out.println("\nSources:");

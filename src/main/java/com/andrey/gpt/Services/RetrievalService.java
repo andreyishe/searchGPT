@@ -11,7 +11,7 @@ public class RetrievalService {
 
     private final SiteContentService site;
 
-    private static final int MAX_CHARS_PER_CHUNK = 3500;  // отдаём больше фактов
+    private static final int MAX_CHARS_PER_CHUNK = 3500;
     private static final int DEFAULT_TOPK = 20;
 
     private static final Set<String> CAREER_KEYS = Set.of(
@@ -34,14 +34,14 @@ public class RetrievalService {
 
         Set<String> qTokens = tokens(query);
 
-        // скорим
+
         List<Map.Entry<Integer, ContentChunk>> scored = new ArrayList<>();
         for (ContentChunk c : all) {
             int s = score(c, qTokens, query);
             scored.add(Map.entry(s, c));
         }
 
-        // сортируем по убыванию, берём topK
+
         return scored.stream()
                 .sorted((a,b) -> Integer.compare(b.getKey(), a.getKey()))
                 .limit(k)
@@ -72,14 +72,14 @@ public class RetrievalService {
         Set<String> t = tokens(txt);
         int overlap = (int) qTokens.stream().filter(t::contains).count();
 
-        // лёгкий tf proxy — чем длиннее и насыщеннее текст, тем выше шанс
+
         overlap += Math.min(t.size() / 200, 5);
 
-        // бусты по url
+
         if (url.contains("karriere") || url.contains("career") || url.contains("jobs")) overlap += 6;
         if (url.contains("retail") || url.contains("e-commerce") || url.contains("branchen")) overlap += 2;
 
-        // бусты по ключевым словам (query intent)
+
         String q = rawQuery.toLowerCase(Locale.ROOT);
         boolean careerIntent = CAREER_KEYS.stream().anyMatch(q::contains);
         boolean retailIntent  = RETAIL_KEYS.stream().anyMatch(q::contains);
