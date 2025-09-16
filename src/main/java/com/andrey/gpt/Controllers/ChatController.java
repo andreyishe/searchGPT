@@ -31,7 +31,6 @@ public class ChatController {
         this.siteContentService = siteContentService;
     }
 
-    // Expect JSON like: { "prompt": "..." }
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> chat(@RequestBody Map<String, String> body) {
         final String prompt = body.getOrDefault("prompt", "").trim();
@@ -43,19 +42,17 @@ public class ChatController {
             List<ContentChunk> relevantChunks = retrievalService.retrieve(prompt, 5);
             ChatResponse response = gptService.getChatCompletionFromChunks(relevantChunks, prompt);
             if (response.getError() != null) {
-
                 return ResponseEntity.status(502).body(Map.of("error", response.getError()));
             }
             return ResponseEntity.ok(response);
 
         } catch (RestClientResponseException http) {
-
             log.error("Upstream error: status={}, body={}", http.getRawStatusCode(), http.getResponseBodyAsString());
             return ResponseEntity.status(http.getRawStatusCode())
                     .body(Map.of("error", "Upstream error", "details", http.getResponseBodyAsString()));
         } catch (Exception e) {
             log.error("Chat endpoint failed", e);
-            return ResponseEntity.status(500).body(Map.of("error", "Internal error"));
+            return ResponseEntity.status(500).body(Map.of("error", "Internal error", "details", e.getMessage()));
         }
     }
 

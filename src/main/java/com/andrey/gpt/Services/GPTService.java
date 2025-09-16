@@ -20,54 +20,36 @@ public class GPTService {
 
     public GPTService(ChatClient.Builder builder,
                       @Value("${spring.ai.openai.chat.options.model:gpt-5}") String model) {
-
-        String jsonSchema = """
-        {
-          "type": "object",
-          "properties": {
-            "answer": { "type": "string" }
-          },
-          "required": ["answer"],
-          "additionalProperties": false
-        }
-        """;
-        ResponseFormat responseFormat = ResponseFormat.builder()
-                .type(ResponseFormat.Type.JSON_SCHEMA)
-                .jsonSchema(jsonSchema)
-                .build();
-
         this.chatClient = builder
                 .defaultOptions(OpenAiChatOptions.builder()
                         .model(model)
-                        .responseFormat(responseFormat)
-                        .temperature(1.0)
                         .maxCompletionTokens(800)
                         .build())
                 .build();
     }
 
     public ChatResponse getChatCompletion(String fullPrompt) {
+        log.info(">>> Sending prompt to OpenAI: {}", fullPrompt);
+
+        String rawResponse = chatClient.prompt()
+                .user(fullPrompt)
+                .options(OpenAiChatOptions.builder()
+                        .model("gpt-5")
+                        .responseFormat(ResponseFormat.builder()
+                                .type(ResponseFormat.Type.TEXT)
+                                .build())
+                        .build())
+                .call()
+                .entity(String.class);
+
+        log.info("<<< OpenAI raw response: {}", rawResponse);
+
         ChatResponse response = new ChatResponse();
-        try {
-            log.info(">>> Sending prompt with JSON schema requirement: {}", fullPrompt);
-
-            String content = chatClient.prompt()
-                    .user(fullPrompt)
-                    .call()
-                    .entity(String.class);
-
-            log.info("<<< OpenAI response: {}", content);
-
-            ChatResponse.Choice choice = new ChatResponse.Choice();
-            ChatResponse.Message message = new ChatResponse.Message();
-            message.setContent(content);
-            choice.setMessage(message);
-            response.setChoices(List.of(choice));
-
-        } catch (Exception e) {
-            log.error("OpenAI client error: {}", e.getMessage(), e);
-            response.setError("OpenAI error: " + e.getMessage());
-        }
+        ChatResponse.Choice choice = new ChatResponse.Choice();
+        ChatResponse.Message message = new ChatResponse.Message();
+        message.setContent(rawResponse);
+        choice.setMessage(message);
+        response.setChoices(List.of(choice));
         return response;
     }
 
