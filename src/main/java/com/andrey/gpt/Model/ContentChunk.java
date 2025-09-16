@@ -5,7 +5,10 @@ public class ContentChunk {
     private String chunkId;
     private String text;
 
-    public ContentChunk(String chunkId, String substring) {
+    public ContentChunk(String chunkId, String text) {
+        this.url = null;
+        this.chunkId = chunkId;
+        this.text = text;
     }
 
     public ContentChunk(String url, String chunkId, String text) {

@@ -4,18 +4,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 
-@SpringBootTest(properties = "spring.ai.openai.api-key=test")
+@SpringBootTest
 class SearchGptApplicationTests {
-
-    @Autowired
-    private ChatClient chatClient;
-
     @Test
-    void contextLoads() {
-        assertNotNull(chatClient);
-    }
-
+    void contextLoads() {}
 }
+

@@ -1,73 +1,56 @@
 package com.andrey.gpt.Services;
 
 import com.andrey.gpt.Model.ContentChunk;
-import com.andrey.gpt.Model.PageContent;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
+
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class SiteContentService {
-    private String cachedContent;
-    private LocalDateTime lastModified;
-    private final Duration duration = Duration.ofHours(1);
-    private final SiteCrawlerService crawler;
 
-    public SiteContentService(SiteCrawlerService crawler) {
-        this.crawler = crawler;
+    private static final Logger log = LoggerFactory.getLogger(SiteContentService.class);
+
+    private volatile Map<String, String> pages = new LinkedHashMap<>();
+    private volatile boolean loaded = false;
+
+    public synchronized void loadFrom(Map<String, String> crawled) {
+        this.pages = (crawled == null) ? new LinkedHashMap<>() : new LinkedHashMap<>(crawled);
+        this.loaded = !this.pages.isEmpty();
+        log.info("SiteContent loaded: {} page(s)", this.pages.size());
     }
 
-    public String getSiteText() {
-        if (cachedContent == null || isExpired()) {
-            Map<String, String> pages = crawler.crawlSite("https://www.ancud.de", 10);
-
-            StringBuilder builder = new StringBuilder();
-            for (Map.Entry<String, String> entry : pages.entrySet()) {
-                builder.append("URL: ").append(entry.getKey()).append("\n");
-                builder.append(entry.getValue()).append("\n\n");
-            }
-
-            cachedContent = builder.toString();
-            lastModified = LocalDateTime.now();
-        }
-
-        return cachedContent;
-    }
-
-    private boolean isExpired() {
-        return lastModified == null ||
-                Duration.between(lastModified, LocalDateTime.now()).compareTo(duration) > 0;
+    public boolean isLoaded() {
+        return loaded;
     }
 
     public List<ContentChunk> getChunks() {
-        String text = getSiteText();
+        if (!loaded || pages.isEmpty()) return List.of();
         List<ContentChunk> chunks = new ArrayList<>();
-        int chunkSize = 1400;
-        int overlap = 200;
-        int pos = 0, index = 0;
+        final int maxCharsPerChunk = 4000;
 
-        while (pos < text.length()) {
-            int end = Math.min(pos + chunkSize, text.length());
-            String slice = text.substring(pos, end).trim();
-            if (!slice.isEmpty()) {
-                chunks.add(new ContentChunk("site", "chunk#" + index++, slice));
+        pages.forEach((url, text) -> {
+            if (text == null || text.isBlank()) return;
+            int idx = 0, part = 0;
+            while (idx < text.length()) {
+                int end = Math.min(idx + maxCharsPerChunk, text.length());
+                String piece = text.substring(idx, end);
+                chunks.add(new ContentChunk(url, url + "#chunk-" + part, piece));
+                idx = end;
+                part++;
             }
-            pos = end - overlap;
-            if (pos <= end) pos = end;
-        }
+        });
         return chunks;
+    }
+
+    public String getSiteText() {
+        if (!loaded || pages.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        pages.forEach((url, text) -> {
+            sb.append("URL: ").append(url).append('\n')
+                    .append(text).append("\n---\n");
+        });
+        return sb.toString();
     }
 }

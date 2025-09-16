@@ -40,7 +40,8 @@ public class OpenAIService {
 
 
     private String truncateChunk(String text, int maxCharsPerChunk) {
-        if (text.length() <= maxCharsPerChunk) return text.substring(0, maxCharsPerChunk);
+        if (text == null) return "";
+        if (text.length() <= maxCharsPerChunk) return text;
         return text.substring(0, maxCharsPerChunk) + "...";
     }
 

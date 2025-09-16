@@ -10,42 +10,87 @@ import java.util.stream.Collectors;
 public class RetrievalService {
 
     private final SiteContentService site;
-    private final int MAX_CHARS_FOR_OPENAI = 1500;
+
+    private static final int MAX_CHARS_PER_CHUNK = 3500;  // отдаём больше фактов
+    private static final int DEFAULT_TOPK = 20;
+
+    private static final Set<String> CAREER_KEYS = Set.of(
+            "career","careers","job","jobs","hiring","vacancy","vacancies","join","team",
+            "karriere","stellen","stellenangebot","stellenangebote","bewerben","wir suchen"
+    );
+
+    private static final Set<String> RETAIL_KEYS = Set.of(
+            "retail","e-commerce","commerce","b2b","b2c","liferay","dxp","shop","affiliate"
+    );
+
     public RetrievalService(SiteContentService site) {
         this.site = site;
     }
 
     public List<ContentChunk> retrieve(String query, Integer topK) {
-        int k = (topK == null || topK <= 0) ? 8 : topK;
+        int k = (topK == null || topK <= 0) ? DEFAULT_TOPK : topK;
+        List<ContentChunk> all = site.getChunks();
+        if (all == null || all.isEmpty()) return List.of();
 
         Set<String> qTokens = tokens(query);
-        List<ContentChunk> allChunks = site.getChunks();
 
-        return allChunks.stream()
-                .map(c -> Map.entry(score(c, qTokens), c))
-                .sorted((a, b) -> Integer.compare(b.getKey(), a.getKey()))
+        // скорим
+        List<Map.Entry<Integer, ContentChunk>> scored = new ArrayList<>();
+        for (ContentChunk c : all) {
+            int s = score(c, qTokens, query);
+            scored.add(Map.entry(s, c));
+        }
+
+        // сортируем по убыванию, берём topK
+        return scored.stream()
+                .sorted((a,b) -> Integer.compare(b.getKey(), a.getKey()))
                 .limit(k)
                 .map(Map.Entry::getValue)
-                .map(c->truncateChunk(c))
+                .map(this::truncate)
                 .collect(Collectors.toList());
     }
 
+    private ContentChunk truncate(ContentChunk c) {
+        String t = Optional.ofNullable(c.getText()).orElse("");
+        if (t.length() <= MAX_CHARS_PER_CHUNK) return c;
+        return new ContentChunk(c.getUrl(), c.getChunkId(), t.substring(0, MAX_CHARS_PER_CHUNK) + "\n...[truncated]...");
+    }
+
     private static Set<String> tokens(String s) {
-        return Arrays.stream(s.toUpperCase()
+        if (s == null) return Set.of();
+        return Arrays.stream(s.toLowerCase(Locale.ROOT)
                         .replaceAll("[^\\p{L}\\p{Nd}\\s]", " ")
                         .split("\\s+"))
                 .filter(t -> t.length() > 2)
                 .collect(Collectors.toSet());
     }
-    private ContentChunk truncateChunk(ContentChunk chunk) {
-        if (chunk.getText().length() > MAX_CHARS_FOR_OPENAI) {
-            return new ContentChunk(chunk.getChunkId(), chunk.getText().substring(0, MAX_CHARS_FOR_OPENAI));
-        }
-        return chunk;
-    }
 
-    private static int score(ContentChunk c, Set<String> qTokens) {
-        Set<String> t = tokens(c.getText());
-        return (int) qTokens.stream().filter(t::contains).count();
+    private static int score(ContentChunk c, Set<String> qTokens, String rawQuery) {
+        String txt = Optional.ofNullable(c.getText()).orElse("").toLowerCase(Locale.ROOT);
+        String url = Optional.ofNullable(c.getUrl()).orElse("").toLowerCase(Locale.ROOT);
+
+        Set<String> t = tokens(txt);
+        int overlap = (int) qTokens.stream().filter(t::contains).count();
+
+        // лёгкий tf proxy — чем длиннее и насыщеннее текст, тем выше шанс
+        overlap += Math.min(t.size() / 200, 5);
+
+        // бусты по url
+        if (url.contains("karriere") || url.contains("career") || url.contains("jobs")) overlap += 6;
+        if (url.contains("retail") || url.contains("e-commerce") || url.contains("branchen")) overlap += 2;
+
+        // бусты по ключевым словам (query intent)
+        String q = rawQuery.toLowerCase(Locale.ROOT);
+        boolean careerIntent = CAREER_KEYS.stream().anyMatch(q::contains);
+        boolean retailIntent  = RETAIL_KEYS.stream().anyMatch(q::contains);
+
+        if (careerIntent) {
+            if (txt.contains("karriere") || txt.contains("jobs") || txt.contains("bewerb")) overlap += 6;
+        }
+        if (retailIntent) {
+            if (txt.contains("retail") || txt.contains("e-commerce") || txt.contains("liferay")) overlap += 3;
+        }
+
+        return overlap;
     }
 }
