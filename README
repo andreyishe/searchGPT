@@ -1,0 +1,93 @@
+searchGPT
+
+A Spring Boot app that uses OpenAI to answer questions based on crawled site content (RAG).
+You can run it in two modes:
+	•	API mode (default, runs HTTP server)
+	•	CLI mode (interactive console chat)
+
+⸻
+
+🚀 Run with IntelliJ IDEA
+	1.	Open the project in IntelliJ IDEA
+	2.	Go to Run → Edit Configurations… and select SearchGptApplication
+	3.	Set Environment variables → OPENAI_API_KEY=sk-... (required)
+
+▶️ Run as API
+	•	Active profiles: (leave empty) or default
+	•	Program arguments (choose one):
+	•	Quick start (no crawl): (leave empty)
+	•	Crawl on startup (recommended):
+--app.crawl.enabled=true --app.crawl.start-url=https://www.ancud.de/ --app.crawl.max-depth=3 --app.crawl.max-pages=300
+
+Click Run. The API will be at: http://localhost:8080
+
+Test (cURL):
+
+curl -s http://localhost:8080/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"What about Career in ancud?"}'
+
+Endpoints
+	•	POST /api/chat → body: {"prompt":"..."}
+	•	returns: {"answer":"...", "sources":["https://..."]}
+	•	GET /api/chat/site-content → returns concatenated crawled text (plain text)
+
+⸻
+
+💻 Run as CLI
+	•	Active profiles: cli
+	•	Program arguments (choose one):
+	•	Dry run (no crawl): --app.crawl.enabled=false
+	•	With crawl:
+--app.crawl.enabled=true --app.crawl.start-url=https://www.ancud.de/ --app.crawl.max-depth=3 --app.crawl.max-pages=300
+
+Click Run. You’ll see:
+
+OpenAI CLI chat (always JSON) ====
+Enter request or 'exit' to quit:
+
+Type your question (e.g., What about Career in ancud?) and press Enter.
+
+⸻
+
+🧰 Run from Terminal
+
+Make sure your key is set. Use two regular hyphens -- (not a long dash).
+
+macOS / Linux
+
+export OPENAI_API_KEY=sk-...
+
+CLI mode
+
+./mvnw -DskipTests spring-boot:run \
+  -Dspring-boot.run.profiles=cli \
+  -Dspring-boot.run.arguments="--app.crawl.enabled=true --app.crawl.start-url=https://www.ancud.de/ --app.crawl.max-depth=3 --app.crawl.max-pages=300"
+
+API mode
+
+./mvnw -DskipTests spring-boot:run \
+  -Dspring-boot.run.arguments="--app.crawl.enabled=true --app.crawl.start-url=https://www.ancud.de/ --app.crawl.max-depth=3 --app.crawl.max-pages=300"
+
+Windows PowerShell
+
+$env:OPENAI_API_KEY="sk-..."
+
+(run the same ./mvnw ... commands above)
+
+⸻
+
+⚙️ Useful flags
+	•	--app.crawl.enabled=true|false — enable/disable crawling at startup
+	•	--app.crawl.start-url=https://example.com/ — seed URL
+	•	--app.crawl.max-depth=3 — crawl depth
+	•	--app.crawl.max-pages=300 — max pages to collect
+	•	--server.port=8081 — change API port
+
+⸻
+
+❗ Troubleshooting
+	•	Could not resolve placeholder 'OPENAI_API_KEY' → Set the key as env var (or VM option -Dspring.ai.openai.api-key=sk-...).
+	•	Only “I don’t know” → You likely ran with --app.crawl.enabled=false (no content). Re-run with crawl enabled or hit /api/chat/site-content to confirm content exists.
+	•	Command fails → Ensure you used -- (double hyphen), not – (en dash).
+	•	Port in use → Add --server.port=8081.
